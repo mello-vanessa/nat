@@ -1,6 +1,5 @@
-# Lacnic
-Network automation: Idempotency in the configuration of an AS
-
+# TCC
+TCC Vanessa Unisinos
 
 ## Example
-ansible-playbook -i Antispoofing/inventory/hosts Antispoofing/Juniper/cpe/main.yaml
+ansible-playbook -i inventory/hosts-cisco Cisco/main.yaml
