@@ -1,0 +1,120 @@
+---
+- name: Check if CEF is disable
+  cisco.ios.ios_command:
+    commands:
+    - show ip cef
+    wait_for: result[0] contains not
+    retries: 2
+  ignore_errors: yes
+  register: checkCefv4
+
+- name: Verify if IPv6 routing is active
+  cisco.ios.ios_command:
+    commands:
+    - show running-config | include unicast
+    wait_for: result[0] contains unicast
+    retries: 2
+  ignore_errors: yes
+  register: checkRoteamentov6
+
+- name: Activate unicast routinh IPv6
+  cisco.ios.ios_config:
+    lines:
+    - ipv6 unicast-routing
+  when: checkRoteamentov6 is failed
+  register: ativaRoteamentoIpv6
+
+- name: Check if CEF v6 is disable
+  cisco.ios.ios_command:
+    commands: 
+    - show ipv6 cef
+    wait_for: result[0] contains not
+    retries: 2
+  ignore_errors: yes
+  register: checkCefv6
+
+- name:Activate CEF IPv4
+  cisco.ios.ios_config:
+    lines:
+    - ip cef
+  when: checkCefv4 is not failed
+  register: configCefIpv4
+
+- name: Activate CEF IPv6
+  cisco.ios.ios_config:
+    lines:
+    - ipv6 cef
+  when: checkCefv6 is not failed
+  register: configCefIpv6
+
+- name: Verify if ACL v4 exists
+  cisco.ios.ios_command:
+    commands:
+    - show ip access-lists | include FILTRO-BOGONS-V4
+    wait_for: result[0] contains FILTRO-BOGONS-V4
+    retries: 2
+  ignore_errors: yes
+  register: checkFiltroBogonsv4
+
+- name: Verify if ACL v6 exists
+  cisco.ios.ios_command:
+    commands:
+    - show ipv6 access-list | include FILTRO-BOGONS-V6
+    wait_for: result[0] contains FILTRO-BOGONS-V6
+    retries: 2
+  ignore_errors: yes
+  register: checkFiltroBogonsv6
+
+- name: Create ACL BOGONS v4
+  cisco.ios.ios_config:
+    lines:
+    - ip access-list extended FILTRO-BOGONS-V4
+    - deny ip 0.0.0.0 0.255.255.255 any
+    - deny ip 10.0.0.0 0.255.255.255 any
+    - deny ip 100.64.0.0 0.63.255.255 any
+    - deny ip 127.0.0.0 0.255.255.255 any
+    - deny ip 169.254.0.0 0.0.255.255 any
+    - deny ip 172.16.0.0 0.15.255.255 any
+    - deny ip 192.0.0.0 0.0.0.255 any
+    - deny ip 192.0.2.0 0.0.0.255 any
+    - deny ip 192.168.0.0 0.0.255.255 any
+    - deny ip 198.18.0.0 0.1.255.255 any
+    - deny ip 198.51.100.0 0.0.0.255 any
+    - deny ip 203.0.113.0 0.0.0.255 any
+    - deny ip 224.0.0.0 31.255.255.255 any
+    - deny tcp any any eq smtp
+    - permit ip any any
+  when: checkFiltroBogonsv4 is failed
+  register: filtroBogonsv4
+
+- name: Create ACL BOGONS v6
+  cisco.ios.ios_config:
+    lines:
+    - ipv6 access-list FILTRO-BOGONS-V6
+    - deny tcp any any eq smtp
+    - deny ipv6 2001:db8::/32 any
+    - permit ipv6 2000::/3 any
+    - permit ipv6 fe80::/64 any
+    - permit ipv6 ::/128 any
+    - deny ipv6 ::/0 any
+  when: checkFiltroBogonsv6 is failed
+  register: filtroBogonsv6
+
+- name: IPv4 - Configure filters on interface - block port 25, CDP.
+  cisco.ios.ios_config:
+    lines:
+      - ip access-group FILTRO-BOGONS-V4 in
+      - ip verify unicast source reachable-via rx
+      - no cdp enable
+    parents: interface ethernet 0/1
+  when: filtroBogonsv4 is changed
+
+- name: IPv6 - Configure filters on interface, block port 25, CDP, RA IPv6
+  cisco.ios.ios_config:
+    lines:
+      - ipv6 traffic-filter FILTRO-BOGONS-V6 in
+      - ipv6 verify unicast source reachable-via rx
+      - no cdp enable
+      - ipv6 nd ra suppress all
+    parents: interface ethernet 0/1
+  when: filtroBogonsv6 is changed

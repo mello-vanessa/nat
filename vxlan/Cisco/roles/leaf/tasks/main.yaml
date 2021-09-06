@@ -1,0 +1,112 @@
+---
+- name: Verifica Hostname
+  cisco.ios.ios_command:
+    commands:
+    - show running-config | include hostname
+    wait_for: result[0] contains Leaf
+    retries: 2
+  ignore_errors: yes
+  register: checkHostname
+
+- name: Configura hostname
+  cisco.ios.ios_config:
+    lines:
+    - hostname Leaf0 {{ 'count' }}
+  when: checkHostname is not failed
+  register: configHostname
+
+- name: Checa se loopback está configurada
+  cisco.ios.ios_command:
+    commands:
+    - show interfaces Loopback0
+    wait_for: result[0] contains not
+    retries: 2
+  ignore_errors: yes
+  register: checkLo0
+
+- name: Checa se interface Eth0/1 está configurada
+  cisco.ios.ios_command:
+    commands:
+    - show running-config interface e0/1
+    wait_for: result[0] contains address
+    retries: 2
+  ignore_errors: yes
+  register: checkE1
+
+- name: Configura Lo0
+  cisco.ios.ios_config:
+    lines:
+    - interface Loopback0
+    - ip address {{ 'ipLo' }} 255.255.255.255
+  when: checkLo0 is failed
+  register: ativaIPLo0
+
+- name: Configura Lo0
+  cisco.ios.ios_config:
+    lines:
+    - interface Ethernet0/1
+    - ip address {{ 'ipE01' }} 255.255.255.252
+    - description To-Spine01
+    - ip ospf network point-to-point
+    - ip ospf 1 area 0.0.0.0
+  when: checkE1 is failed
+  register: ativaIPLo0
+
+- name: Checa se OSPF está ativado
+  cisco.ios.ios_command:
+    commands: 
+    - ??????
+    wait_for: result[0] contains not
+    retries: 2
+  ignore_errors: yes
+  register: checkOspf
+
+- name: Checa se BGP está ativado
+  cisco.ios.ios_command:
+    commands:
+    - ??????
+    wait_for: result[0] contains not
+    retries: 2
+  ignore_errors: yes
+  register: checkBgp
+
+- name: Ativa OSPF
+  cisco.ios.ios_config:
+    lines:
+    - router ospf 1
+    - router-id {{ 'ipLo' }}
+  when: checkOspf is failed
+  register: configOspf
+
+- name: Ativa BGP
+  cisco.ios.ios_config:
+    lines:
+    - router bgp 65535
+    - neighbor 1.1.1.1 remote-as 65535
+    - neighbor 1.1.1.1 update-source Loopback0
+    - address family ipv4
+    - neighbor 1.1.1.1 activate
+    - exit-address-family
+    - address-family l2vpn evpn
+    - neighbor 1.1.1.1 activate
+    - neighbor 1.1.1.1 send-community both
+  when: checkBgp is failed
+  register: configBgp
+
+
+- name: Configura hostname
+  cisco.ios.ios_config:
+    lines:
+    - hostname Leaf0 {{ 'count' }}
+  when: checkCefv6 is not failed
+  register: configCefIpv6
+
+- name: Verifica Hostname
+  cisco.ios.ios_command:
+    commands:
+    - show running-config | include hostname
+    wait_for: result[0] contains Leaf
+    retries: 2
+  ignore_errors: yes
+  register: checkHostname
+

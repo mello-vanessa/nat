@@ -1,0 +1,8 @@
+---
+ipLo: "3.3.3.3"
+ipE01: "10.100.10.20"
+count: "1"
+ansible_user: ansible
+ansible_password: 201125
+#ansible_ssh_private_key_file: ~/.ssh/Ansible_SSH_key
+ansible_network_os: ios

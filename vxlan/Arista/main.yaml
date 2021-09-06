@@ -1,0 +1,5 @@
+- hosts: arista
+  connection: ansible.netcommon.network_cli
+  gather_facts: no
+  roles:
+    - leaf

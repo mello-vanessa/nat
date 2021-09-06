@@ -1,0 +1,8 @@
+---
+# Edite aqui as interfaces conectadas com o ISP
+Interfacev4: "ethernet 0/1"
+Interfacev6: "ethernet 0/1"
+# Fim da edição
+ansible_user: ansible
+ansible_ssh_private_key_file: ~/.ssh/Ansible_SSH_key
+ansible_network_os: ios
